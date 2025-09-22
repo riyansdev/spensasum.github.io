@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Monitoring Data InfoGTK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 text-center mb-2">Sistem Monitoring Data InfoGTK</h1>
+            <p class="text-gray-600 text-center">Create By Riyan Setiawan, S.Kom.</p>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-green-500 rounded-xl p-6 text-white">
+                <h3 class="text-lg font-semibold mb-2">Data Valid</h3>
+                <p class="text-3xl font-bold" id="validCount">0</p>
+            </div>
+            <div class="bg-red-500 rounded-xl p-6 text-white">
+                <h3 class="text-lg font-semibold mb-2">Data Invalid</h3>
+                <p class="text-3xl font-bold" id="invalidCount">0</p>
+            </div>
+            <div class="bg-yellow-500 rounded-xl p-6 text-white">
+                <h3 class="text-lg font-semibold mb-2">Belum Diverifikasi</h3>
+                <p class="text-3xl font-bold" id="pendingCount">41</p>
+            </div>
+            <div class="bg-blue-500 rounded-xl p-6 text-white">
+                <h3 class="text-lg font-semibold mb-2">Total Data</h3>
+                <p class="text-3xl font-bold" id="totalCount">41</p>
+            </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex flex-wrap gap-4 items-center">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Filter Status:</label>
+                    <select id="statusFilter" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="all">Semua Status</option>
+                        <option value="valid">Valid Saja</option>
+                        <option value="invalid">Invalid Saja</option>
+                        <option value="pending">Belum Diverifikasi</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Cari Nama:</label>
+                    <input type="text" id="searchInput" placeholder="Ketik nama guru..." class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">No</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Nama Guru/Tenaga Kependidikan</th>
+                            <th class="px-6 py-4 text-center text-sm font-semibold text-gray-700">Status Validasi</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Keterangan</th>
+                            <th class="px-6 py-4 text-center text-sm font-semibold text-gray-700">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTable" class="divide-y divide-gray-200">
+                        <!-- Data akan diisi oleh JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mt-8">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Progress Verifikasi Data</h3>
+            <div class="w-full bg-gray-200 rounded-full h-4">
+                <div id="progressBar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <p class="text-sm text-gray-600 mt-2">
+                <span id="progressText">0% data telah diverifikasi</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Modal untuk Edit Keterangan -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Edit Keterangan</h3>
+            <input type="hidden" id="editIndex">
+            <textarea id="editKeterangan" rows="4" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Masukkan keterangan..."></textarea>
+            <div class="flex gap-3 mt-4">
+                <button onclick="saveKeterangan()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors">Simpan</button>
+                <button onclick="closeModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg font-medium transition-colors">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data guru dan tenaga kependidikan
+        const teachersData = [
+            "Sudrajat Dwi Prihanto, S.Pd., M.Pd.",
+            "Elya Rahmi, S.Pd.",
+            "Arwan Susanto, S.Pd.",
+            "Marsono, S.Pd.",
+            "Rr. Nurningsih Purnamawati, S.Pd.",
+            "Nunung Ratih Pertiwi, S.Pd.",
+            "Erning Sulistyani, S.Pd.",
+            "Supriyanto, S.Pd.",
+            "Siti Amthiatun, S.Ag.",
+            "Mudzakiroh, S.Ag.",
+            "Astuti, S.Pd.",
+            "Yuni Sugiyarti, S.Pd.",
+            "Sri Wahyuni Bagi Astuti, S.Pd.",
+            "Sarmanto, S.Pd.",
+            "Maria Puji Partinah, S.PAK.",
+            "Wiwi Purwiyati, S.Pd.",
+            "Supriatini Chandra Sari, S.Pd, M.Pd.",
+            "Dra. Nur Budiyatmi",
+            "Yekti Nugraheni, S.Pd.",
+            "Endariati, S.Pd.",
+            "Titin Puji Astuti, S.Pd.",
+            "Sitri Wiloso, SH",
+            "Tri Paryanto, S.Pd.I.",
+            "Maria Sri Yuliani, S.Pd.",
+            "Eko Antono, M.Pd.",
+            "Rina Devi Femiar, S.Pd.",
+            "Masruri, S.Pd.",
+            "Yogi Priyani, S.Pd.",
+            "Destriyanto Badruzzaman, S.P.",
+            "Hijrianti Jihan Khumairoh, S.Pd.",
+            "Listiyorini, S.Pd.",
+            "Aisyah Sepwiana Putri, S.Pd.",
+            "Umi Nur Khanifah, S.Pd.",
+            "Rizky Okta Hermawan, S.Pd.",
+            "Riyan Setiawan, S.Kom.",
+            "Muhammad Labib Ridlo, S.Pd.",
+            "Nur Anifah Fitriana, S.Pd.",
+            "Dartun Eko Kembar Maryanto, S.Kom",
+            "Fajar Subehi, S.Pd.",
+            "Aprilia Dwi Rahmawati, S.Pd.",
+            "Yuniarti, S.Ag."
+        ];
+
+        // Inisialisasi data monitoring
+        let monitoringData = teachersData.map((name, index) => ({
+            id: index + 1,
+            name: name,
+            status: 'pending',
+            keterangan: ''
+        }));
+
+        // Render tabel
+        function renderTable(data = monitoringData) {
+            const tableBody = document.getElementById('dataTable');
+            tableBody.innerHTML = '';
+
+            data.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors';
+                
+                const statusBadge = getStatusBadge(item.status);
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 text-sm text-gray-900">${item.id}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${item.name}</td>
+                    <td class="px-6 py-4 text-center">
+                        <select onchange="updateStatus(${item.id - 1}, this.value)" class="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${getDropdownClass(item.status)}">
+                            <option value="pending" ${item.status === 'pending' ? 'selected' : ''}>Belum Diverifikasi</option>
+                            <option value="valid" ${item.status === 'valid' ? 'selected' : ''}>Valid</option>
+                            <option value="invalid" ${item.status === 'invalid' ? 'selected' : ''}>Invalid</option>
+                        </select>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">
+                        <div class="max-w-xs truncate">${item.keterangan || '-'}</div>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <button onclick="editKeterangan(${item.id - 1})" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-lg text-sm font-medium transition-colors">
+                            ✏️ Edit
+                        </button>
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Update status
+        function updateStatus(index, newStatus) {
+            monitoringData[index].status = newStatus;
+            updateStatistics();
+            updateProgress();
+            renderTable(); // Re-render table to update dropdown colors
+        }
+
+        // Edit keterangan
+        function editKeterangan(index) {
+            document.getElementById('editIndex').value = index;
+            document.getElementById('editKeterangan').value = monitoringData[index].keterangan;
+            document.getElementById('editModal').classList.remove('hidden');
+            document.getElementById('editModal').classList.add('flex');
+        }
+
+        // Simpan keterangan
+        function saveKeterangan() {
+            const index = parseInt(document.getElementById('editIndex').value);
+            const keterangan = document.getElementById('editKeterangan').value;
+            monitoringData[index].keterangan = keterangan;
+            closeModal();
+            renderTable();
+        }
+
+        // Tutup modal
+        function closeModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editModal').classList.remove('flex');
+        }
+
+        // Get status badge
+        function getStatusBadge(status) {
+            const badges = {
+                'valid': '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">✓ Valid</span>',
+                'invalid': '<span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">✗ Invalid</span>',
+                'pending': '<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">⏳ Pending</span>'
+            };
+            return badges[status] || badges['pending'];
+        }
+
+        // Get dropdown class based on status
+        function getDropdownClass(status) {
+            const classes = {
+                'valid': 'bg-green-500 text-white border-green-500 font-medium',
+                'invalid': 'bg-red-500 text-white border-red-500 font-medium',
+                'pending': 'bg-yellow-100 text-yellow-800 border-yellow-300'
+            };
+            return classes[status] || classes['pending'];
+        }
+
+        // Update statistik
+        function updateStatistics() {
+            const validCount = monitoringData.filter(item => item.status === 'valid').length;
+            const invalidCount = monitoringData.filter(item => item.status === 'invalid').length;
+            const pendingCount = monitoringData.filter(item => item.status === 'pending').length;
+            const totalCount = monitoringData.length;
+
+            document.getElementById('validCount').textContent = validCount;
+            document.getElementById('invalidCount').textContent = invalidCount;
+            document.getElementById('pendingCount').textContent = pendingCount;
+            document.getElementById('totalCount').textContent = totalCount;
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            const verifiedCount = monitoringData.filter(item => item.status !== 'pending').length;
+            const totalCount = monitoringData.length;
+            const percentage = Math.round((verifiedCount / totalCount) * 100);
+
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = `${percentage}% data telah diverifikasi (${verifiedCount}/${totalCount})`;
+        }
+
+        // Filter data
+        function filterData() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+            let filteredData = monitoringData;
+
+            if (statusFilter !== 'all') {
+                filteredData = filteredData.filter(item => item.status === statusFilter);
+            }
+
+            if (searchTerm) {
+                filteredData = filteredData.filter(item => 
+                    item.name.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            renderTable(filteredData);
+        }
+
+
+
+        // Event listeners
+        document.getElementById('statusFilter').addEventListener('change', filterData);
+        document.getElementById('searchInput').addEventListener('input', filterData);
+
+        // Inisialisasi
+        renderTable();
+        updateStatistics();
+        updateProgress();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'983273ce568dce69',t:'MTc1ODU1MDkyNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
